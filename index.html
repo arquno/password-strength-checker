@@ -1,6 +1,261 @@
-<!doctype html>
-<html>
-<head><meta charset="utf-8"><title>Works!</title></head>
-<body><h1>GitHub Pages is live 🎉</h1></body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Password Strength Checker</title>
+  <style>
+    :root {
+      --bg: #0f172a;        /* slate-900 */
+      --card: #111827;      /* gray-900 */
+      --text: #e5e7eb;      /* gray-200 */
+      --muted: #94a3b8;     /* slate-400 */
+      --accent: #22c55e;    /* green-500 */
+      --warn: #f59e0b;      /* amber-500 */
+      --bad: #ef4444;       /* red-500 */
+      --ok: #3b82f6;        /* blue-500 */
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1000px 600px at 10% 10%, #0b1024, #0f172a);
+      color: var(--text);
+      min-height: 100dvh;
+      display: grid; place-items: center;
+      padding: 24px;
+    }
+    .container {
+      width: 100%; max-width: 900px; display: grid; gap: 16px; grid-template-columns: 1.2fr 1fr;
+    }
+    @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      backdrop-filter: blur(6px);
+    }
+    h1 { font-weight: 700; letter-spacing: 0.2px; margin: 0 0 6px; }
+    p { margin: 0 0 14px; color: var(--muted); }
+    label { display: block; font-weight: 600; margin: 12px 0 8px; }
+
+    .input-wrap { position: relative; }
+    input[type="password"], input[type="text"] {
+      width: 100%; padding: 14px 44px 14px 14px; font-size: 16px; color: var(--text);
+      background: #0b1229; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; outline: none;
+      transition: border 0.2s ease;
+    }
+    input:focus { border-color: var(--ok); }
+    .toggle {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      background: transparent; color: var(--muted); border: none; cursor: pointer; font-size: 13px;
+    }
+
+    .meter { height: 10px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; }
+    .bar { height: 100%; width: 0%; background: var(--bad); transition: width 260ms ease, background 260ms ease; }
+    .legend { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+
+    .grid { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+
+    .pill {
+      display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 999px; font-size: 12px; color: var(--text);
+      border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.03);
+    }
+    .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--bad); }
+
+    .entropy {
+      font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: .2px;
+    }
+    .suggestions li { margin: 6px 0; }
+    code { background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 6px; }
+
+    .badge { font-size: 11px; padding: 4px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12); color: var(--muted) }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+    .footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 8px; }
+    .copy { appearance: none; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); color: var(--text); padding: 8px 10px; border-radius: 10px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="card">
+      <h1>Password Strength Checker</h1>
+      <p>Real-time strength, <span class="entropy">entropy</span> score, and actionable suggestions. Built with vanilla HTML/CSS/JS.</p>
+
+      <label for="pw">Enter password</label>
+      <div class="input-wrap">
+        <input id="pw" type="password" placeholder="Type a password…" autocomplete="off" />
+        <button class="toggle" id="toggle">Show</button>
+      </div>
+
+      <div style="height: 14px"></div>
+      <div class="meter" aria-hidden="true"><div class="bar" id="bar"></div></div>
+      <div class="legend" id="legend">
+        <span id="rating">Very Weak</span>
+        <span><span class="entropy" id="entropy">0.0</span> bits</span>
+      </div>
+
+      <div class="grid">
+        <div class="card" style="padding:14px">
+          <div class="row"><strong>Checks</strong><span class="badge" id="risk">Risk: High</span></div>
+          <div style="height:8px"></div>
+          <div id="checks"></div>
+        </div>
+
+        <div class="card" style="padding:14px">
+          <strong>Suggestions</strong>
+          <ul class="suggestions" id="tips"></ul>
+        </div>
+      </div>
+
+      <div class="footer">Includes simple blacklist and pattern checks (repeats, sequences, dates). Uses Shannon entropy approximation.
+        <button class="copy" id="copyBtn" title="Copy sample passwords">Try examples</button>
+      </div>
+    </section>
+
+    <aside class="card">
+      <h3>What makes a strong password?</h3>
+      <ul>
+        <li>Length ≥ <code>12-16</code> characters</li>
+        <li>Mixture of upper/lowercase, digits, and symbols</li>
+        <li>No common words: <em>password, qwerty, admin</em></li>
+        <li>Avoid personal info: names, birthdays, phone</li>
+        <li>Prefer passphrases: <code>river-cactus-moon!79</code></li>
+      </ul>
+
+      <h3>Example Ratings</h3>
+      <ul>
+        <li><code>admin123</code> → Very Weak</li>
+        <li><code>Qwerty!234</code> → Weak</li>
+        <li><code>Orbit!7-sage-harbor</code> → Strong</li>
+      </ul>
+
+      <h3>Resume Tips</h3>
+      <ul>
+        <li>Describe entropy + checks in your README.</li>
+        <li>Add tests and CI badge (GitHub Actions).</li>
+        <li>Host on GitHub Pages for live demo.</li>
+      </ul>
+    </aside>
+  </div>
+
+  <script>
+    // --- Minimal common password blacklist (expand in real project) ---
+    const BLACKLIST = new Set([
+      '123456','123456789','qwerty','password','12345','qwerty123','1q2w3e4r','admin','welcome','iloveyou','111111','abc123','password1','123123'
+    ]);
+
+    // --- Helpers ---
+    function hasLower(s){return /[a-z]/.test(s)}
+    function hasUpper(s){return /[A-Z]/.test(s)}
+    function hasDigit(s){return /\d/.test(s)}
+    function hasSymbol(s){return /[^A-Za-z0-9]/.test(s)}
+
+    function isRepeat(s){ return /(.)\1{2,}/.test(s) } // 3+ same char
+    function isKeyboardSeq(s){ return /(qwerty|asdf|zxcv|1234|abcd)/i.test(s) }
+    function isDateLike(s){ return /(19|20)\d{2}[-\/.]?\d{2}[-\/.]?\d{2}/.test(s) || /\d{2}[-\/.]?\d{2}[-\/.]?(19|20)\d{2}/.test(s) }
+
+    function estimateEntropy(pw){
+      if(!pw) return 0;
+      let charset = 0;
+      if(hasLower(pw)) charset += 26;
+      if(hasUpper(pw)) charset += 26;
+      if(hasDigit(pw)) charset += 10;
+      if(hasSymbol(pw)) charset += 33; // rough ASCII symbol count
+      if(charset === 0) return 0;
+      // Shannon-style approximation in bits: log2(charset^length) = length * log2(charset)
+      const bits = pw.length * Math.log2(charset);
+      // Penalize obvious patterns
+      let penalty = 0;
+      if (BLACKLIST.has(pw.toLowerCase())) penalty += 20;
+      if (isRepeat(pw)) penalty += 10;
+      if (isKeyboardSeq(pw)) penalty += 15;
+      if (isDateLike(pw)) penalty += 10;
+      return Math.max(0, bits - penalty);
+    }
+
+    function ratingFromBits(bits){
+      if(bits < 28) return {label:'Very Weak', color:'var(--bad)', score:0};
+      if(bits < 36) return {label:'Weak', color:'var(--warn)', score:25};
+      if(bits < 60) return {label:'Fair', color:'var(--ok)', score:55};
+      if(bits < 80) return {label:'Strong', color:'var(--accent)', score:80};
+      return {label:'Excellent', color:'var(--accent)', score:100};
+    }
+
+    function renderChecks(pw){
+      const checks = [];
+      const push = (ok, text) => {
+        const color = ok ? 'var(--accent)' : 'var(--bad)';
+        checks.push(`<span class="pill"><span class="dot" style="background:${color}"></span>${text}</span>`);
+      }
+      push(pw.length >= 12, `Length ≥ 12 (${pw.length})`);
+      push(hasLower(pw), 'Lowercase');
+      push(hasUpper(pw), 'Uppercase');
+      push(hasDigit(pw), 'Digit');
+      push(hasSymbol(pw), 'Symbol');
+      push(!isRepeat(pw), 'No repeats (3+)');
+      push(!isKeyboardSeq(pw), 'No common sequences');
+      push(!isDateLike(pw), 'Not date-like');
+      return checks.join(' ');
+    }
+
+    function renderTips(pw){
+      const tips = [];
+      if(pw.length < 12) tips.push('Use at least 12–16 characters.');
+      if(!(hasLower(pw) && hasUpper(pw))) tips.push('Mix UPPER and lower case.');
+      if(!hasDigit(pw)) tips.push('Add numbers.');
+      if(!hasSymbol(pw)) tips.push('Add symbols (e.g., !@#$).');
+      if(isRepeat(pw)) tips.push('Avoid repeating characters (e.g., aaa, 111).');
+      if(isKeyboardSeq(pw)) tips.push('Avoid sequences like qwerty/1234.');
+      if(isDateLike(pw)) tips.push('Avoid dates or birthdays.');
+      if(BLACKLIST.has(pw.toLowerCase())) tips.push('This is a very common password — change it.');
+      if(tips.length === 0) tips.push('Looks great! Consider a passphrase you can remember.');
+      return tips.map(t=>`<li>${t}</li>`).join('');
+    }
+
+    const pw = document.getElementById('pw');
+    const bar = document.getElementById('bar');
+    const ratingEl = document.getElementById('rating');
+    const entropyEl = document.getElementById('entropy');
+    const checksEl = document.getElementById('checks');
+    const tipsEl = document.getElementById('tips');
+    const riskEl = document.getElementById('risk');
+
+    function update(){
+      const val = pw.value;
+      const bits = estimateEntropy(val);
+      const r = ratingFromBits(bits);
+      const pct = Math.min(100, Math.max(0, r.score));
+      bar.style.width = pct + '%';
+      bar.style.background = r.color;
+      ratingEl.textContent = r.label;
+      entropyEl.textContent = bits.toFixed(1);
+      checksEl.innerHTML = renderChecks(val);
+      tipsEl.innerHTML = renderTips(val);
+      riskEl.textContent = 'Risk: ' + (bits < 36 ? 'High' : bits < 60 ? 'Medium' : 'Low');
+    }
+
+    pw.addEventListener('input', update);
+    update();
+
+    // Toggle password visibility
+    document.getElementById('toggle').addEventListener('click', (e)=>{
+      e.preventDefault();
+      if(pw.type === 'password'){ pw.type='text'; e.target.textContent='Hide'; }
+      else { pw.type='password'; e.target.textContent='Show'; }
+      pw.focus();
+    });
+
+    // Examples button cycles through sample passwords
+    const samples = ['admin123','Qwerty!234','Orbit!7-sage-harbor','river-cactus-moon!79','P@ssw0rd!!2024'];
+    let idx = 0;
+    document.getElementById('copyBtn').addEventListener('click', ()=>{
+      idx = (idx + 1) % samples.length;
+      pw.value = samples[idx];
+      update();
+    });
+  </script>
+</body>
 </html>
 
